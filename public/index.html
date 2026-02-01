@@ -1984,14 +1984,12 @@
                 driversContainer.appendChild(driverDiv);
             });
             
-            // V3: Real-time validation on input
-            if (!isSaved) {
-                Object.values(positionInputs).forEach(input => {
-                    input.addEventListener('input', (e) => {
-                        validateV3PositionInput(e.target, driverMap, raceIdentifier);
-                    });
+            // V3: Real-time validation on input - Always attach listeners, even if currently disabled
+            Object.values(positionInputs).forEach(input => {
+                input.addEventListener('input', (e) => {
+                    validateV3PositionInput(e.target, driverMap, raceIdentifier);
                 });
-            }
+            });
             
             return container;
         }
@@ -5118,11 +5116,25 @@
                 }
             });
             
-            // V4: Tech Inspection checkbox handler - re-render to enable inputs
+            // V4: Tech Inspection checkbox handler - enable inputs when checked
             document.getElementById('featureContainer').addEventListener('change', (e) => {
                 if (e.target.id && e.target.id.startsWith('techInspection-')) {
                     const classId = e.target.id.replace('techInspection-', '');
-                    renderFeature(classId);
+                    const isChecked = e.target.checked;
+                    
+                    // Enable/disable all position inputs for this feature
+                    const raceIdentifier = `feature-${classId}`;
+                    const positionInputs = document.querySelectorAll(`input[data-race-id="${raceIdentifier}"]`);
+                    
+                    positionInputs.forEach(input => {
+                        input.disabled = !isChecked;
+                    });
+                    
+                    // Hide/show warning message
+                    const warningMsg = document.querySelector(`#v3-positions-${raceIdentifier} p.text-red-600`);
+                    if (warningMsg) {
+                        warningMsg.style.display = isChecked ? 'none' : 'block';
+                    }
                 }
             });
 
@@ -5185,7 +5197,6 @@
                         }, 250);
                     }
                 );
-            });
             });
             
             ['enableBMain', 'featureStartCount', 'heatTransferCount'].forEach(id => {
@@ -5722,8 +5733,12 @@
             }
         }
 
-        document.addEventListener('DOMContentLoaded', setupRaceManagerApp);
+        // Ensure setup runs whether DOM is already loaded or not
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', setupRaceManagerApp);
+        } else {
+            setupRaceManagerApp();
+        }
     </script>
 </body>
 </html>
-

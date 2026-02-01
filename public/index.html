@@ -623,7 +623,6 @@
                     </select>
                     <button id="printResultsBtn" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600">Print Full Results</button>
                     <button id="printPayoutSheetBtn" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">💰 Print Payout Sheet</button>
-                    <button id="viewHistoryBtn" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">📚 View Race History</button>
                 </div>
                 <div id="raceResultsContainer">
                     <p class="text-gray-500 text-center">Select a class to see the full race report.</p>
@@ -782,6 +781,33 @@
                         <div id="historyResultsContainer" class="p-3 bg-orange-50 rounded-md h-96 overflow-y-auto">
                             <p class="text-gray-500">Select an event date to see results.</p>
                         </div>
+                    </div>
+                </div>
+                
+                <!-- V5: Advanced Reports Section -->
+                <div class="mt-8 card p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-800">📊 Driver Statistics & Reports</h2>
+                            <p class="text-gray-600 text-sm mt-1">Comprehensive driver performance analytics</p>
+                        </div>
+                        <button id="printReportsBtn" class="btn-secondary hidden">
+                            <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                            </svg>
+                            Print Reports
+                        </button>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label for="reportsClassSelect" class="block text-sm font-semibold text-gray-700 mb-2">Select Class for Reports</label>
+                        <select id="reportsClassSelect" class="input-modern w-full max-w-md">
+                            <option value="">Select a class to view reports...</option>
+                        </select>
+                    </div>
+                    
+                    <div id="reportsContainer" class="overflow-x-auto">
+                        <p class="text-gray-500 text-center py-8">Select a class above to view detailed driver statistics and reports.</p>
                     </div>
                 </div>
             </div>
@@ -1039,20 +1065,6 @@
         </div>
     </div>
 
-    <!-- V4: Race History Modal -->
-    <div id="raceHistoryModal" class="modal-backdrop hidden">
-        <div class="modal-content" style="max-width: 900px; max-height: 80vh; overflow-y: auto;">
-            <h3 class="text-xl font-bold mb-4">📚 Race History</h3>
-            <p class="text-sm text-gray-600 mb-4">Complete history of all finalized races with notes and results.</p>
-            <div id="raceHistoryContent" class="space-y-4">
-                <!-- History entries will be added here -->
-            </div>
-            <div class="flex justify-end mt-4">
-                <button type="button" id="raceHistoryModalCloseBtn" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300">Close</button>
-            </div>
-        </div>
-    </div>
-
     <div id="payoutStructureModal" class="modal-backdrop hidden">
         <div class="modal-content" style="max-width: 700px;">
             <h3 id="payoutStructureModalTitle" class="text-xl font-bold mb-4">Create Payout Structure</h3>
@@ -1160,11 +1172,13 @@
             pointSettings: { heat: [], feature: [], showUpPoints: 0 }, // V3: Added showUpPoints
             payoutStructures: [], // Array of payout structure templates
             driverPayouts: {}, // Track payouts per driver { driverId: { yearlyTotal: 0, races: [] } }
-            raceHistory: [], // V4: Track completed events with notes { date, classId, className, notes, heatResults, featureResults }
         };
         
         let state = { ...initialGlobalState, ...initialEventState };
         let _passwordProtectedAction = null;
+
+        // --- Logo for Printed Documents ---
+        const LOGO_BASE64 = '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';
 
         // --- Data Persistence ---
         // Helper function to remove duplicates from a lineup array
@@ -1326,8 +1340,6 @@
                             classId = select.value;
                         }
                         if(classId) renderPointsPage(classId);
-                    } else if (tabName === 'payouts') {
-                        renderPayouts();
                     } else if (tabName === 'history') {
                         const select = document.getElementById('historyClassSelect');
                         let classId = select.value;
@@ -1456,7 +1468,6 @@
                  document.getElementById('bMainClassSelect'),
                  document.getElementById('featureClassSelect'),
                  document.getElementById('historyClassSelect'),
-                 document.getElementById('payoutClassFilter'),
              ];
 
              const selectedValues = {}; 
@@ -1871,12 +1882,10 @@
             const resultsArray = Array.isArray(savedResults) ? savedResults : null;
             const isSaved = resultsArray !== null || isRainout;
             
-            // V4: For features that aren't saved, check if tech inspection checkbox is checked
+            // V4: For features that aren't saved, default to NOT complete (will be checked after rendering)
             let techInspectionComplete = true;
             if (raceType === 'feature' && !isSaved) {
-                // Check if the checkbox exists and is checked in the DOM
-                const checkbox = classId ? document.getElementById(`techInspection-${classId}`) : null;
-                techInspectionComplete = checkbox ? checkbox.checked : false;
+                techInspectionComplete = false; // Default to false, will enable after checkbox is checked
             }
             
             // Create two-column layout
@@ -2274,108 +2283,6 @@
                 pointsList.appendChild(tr);
             });
         }
-        
-        // V4: Render Payouts Management Page
-        function renderPayouts() {
-            const payoutsList = document.getElementById('payoutsList');
-            const totalYearlyEl = document.getElementById('totalYearlyPayout');
-            const totalEventsEl = document.getElementById('totalEventsWithPayouts');
-            const avgPayoutEl = document.getElementById('avgPayoutPerEvent');
-            const classFilter = document.getElementById('payoutClassFilter');
-            const searchInput = document.getElementById('payoutDriverSearch');
-            
-            if (!state.driverPayouts || Object.keys(state.driverPayouts).length === 0) {
-                payoutsList.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-gray-500">No payout data yet. Finalize some races with payout structures to track earnings!</td></tr>';
-                totalYearlyEl.textContent = '$0';
-                totalEventsEl.textContent = '0';
-                avgPayoutEl.textContent = '$0';
-                return;
-            }
-            
-            // Calculate summary stats
-            let totalPaid = 0;
-            const eventDates = new Set();
-            
-            Object.values(state.driverPayouts).forEach(driverData => {
-                totalPaid += driverData.yearlyTotal || 0;
-                driverData.races.forEach(race => {
-                    eventDates.add(race.date);
-                });
-            });
-            
-            const numEvents = eventDates.size;
-            const avgPayout = numEvents > 0 ? totalPaid / numEvents : 0;
-            
-            totalYearlyEl.textContent = '$' + totalPaid.toFixed(2);
-            totalEventsEl.textContent = numEvents.toString();
-            avgPayoutEl.textContent = '$' + avgPayout.toFixed(2);
-            
-            // Build driver rows
-            const filterClass = classFilter.value;
-            const searchTerm = searchInput.value.toLowerCase();
-            
-            const driverRows = [];
-            Object.entries(state.driverPayouts).forEach(([driverId, payoutData]) => {
-                const driver = state.drivers.find(d => d.id === driverId);
-                if (!driver) return;
-                
-                const className = state.classes.find(c => c.id === driver.classId)?.name || 'Unknown';
-                
-                // Apply filters
-                if (filterClass && driver.classId !== filterClass) return;
-                if (searchTerm && !driver.name.toLowerCase().includes(searchTerm) && 
-                    !driver.number.toString().includes(searchTerm)) return;
-                
-                driverRows.push({
-                    driver: driver,
-                    className: className,
-                    total: payoutData.yearlyTotal || 0,
-                    events: payoutData.races.length
-                });
-            });
-            
-            // Sort by total winnings descending
-            driverRows.sort((a, b) => b.total - a.total);
-            
-            if (driverRows.length === 0) {
-                payoutsList.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-gray-500">No drivers match the current filters.</td></tr>';
-                return;
-            }
-            
-            // Render rows
-            const html = driverRows.map((row, index) => `
-                <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                    <td class="p-3">
-                        <div class="font-semibold text-gray-900">${row.driver.name}</div>
-                        <div class="text-xs text-gray-500">${row.driver.city || ''} ${row.driver.state || ''}</div>
-                    </td>
-                    <td class="p-3">
-                        <span class="inline-block bg-orange-100 text-orange-800 px-2 py-1 rounded font-bold text-sm">
-                            #${row.driver.number}
-                        </span>
-                    </td>
-                    <td class="p-3">
-                        <span class="text-sm text-gray-700">${row.className}</span>
-                    </td>
-                    <td class="p-3 text-right">
-                        <span class="text-lg font-bold text-green-600">$${row.total.toFixed(2)}</span>
-                    </td>
-                    <td class="p-3 text-center">
-                        <span class="inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-semibold">
-                            ${row.events}
-                        </span>
-                    </td>
-                    <td class="p-3 text-center">
-                        <button class="text-blue-600 hover:text-blue-800 text-sm font-semibold view-payout-details-btn" 
-                                data-driver-id="${row.driver.id}">
-                            View Details
-                        </button>
-                    </td>
-                </tr>
-            `).join('');
-            
-            payoutsList.innerHTML = html;
-        }
 
         function renderRaceResults(classId, eventData) {
             const container = document.getElementById('raceResultsContainer');
@@ -2490,60 +2397,6 @@
             container.innerHTML = html || '<p class="text-gray-500 text-center">No results found for this class on this event date.</p>';
         }
 
-        // V4: Render Race History Modal
-        function renderRaceHistory() {
-            const container = document.getElementById('raceHistoryContent');
-            
-            if (!state.raceHistory || state.raceHistory.length === 0) {
-                container.innerHTML = '<p class="text-gray-500 text-center">No race history yet. Finalize some races to build your history!</p>';
-                return;
-            }
-            
-            // Sort by date descending (newest first)
-            const sortedHistory = [...state.raceHistory].sort((a, b) => {
-                return new Date(b.date) - new Date(a.date);
-            });
-            
-            let html = '';
-            sortedHistory.forEach((entry, index) => {
-                const hasNotes = entry.notes && entry.notes.trim().length > 0;
-                const hasResults = entry.featureResults && entry.featureResults.results;
-                
-                html += `
-                    <div class="border-2 border-gray-300 rounded-lg p-4 ${index === 0 ? 'bg-blue-50' : 'bg-white'}">
-                        <div class="flex justify-between items-start mb-2">
-                            <div>
-                                <h4 class="text-lg font-bold text-gray-900">${entry.className}</h4>
-                                <p class="text-sm text-gray-600">📅 ${entry.date}</p>
-                            </div>
-                            <span class="text-xs text-gray-500">Finalized: ${new Date(entry.finalizedAt).toLocaleString()}</span>
-                        </div>
-                        
-                        ${hasNotes ? `
-                            <div class="mt-3 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded">
-                                <p class="text-sm font-semibold text-gray-700 mb-1">📝 Notes:</p>
-                                <p class="text-sm text-gray-800 whitespace-pre-wrap">${entry.notes}</p>
-                            </div>
-                        ` : '<p class="text-sm text-gray-500 italic mt-2">No notes recorded for this event.</p>'}
-                        
-                        ${hasResults && Array.isArray(entry.featureResults.results) ? `
-                            <div class="mt-3">
-                                <p class="text-sm font-semibold text-gray-700 mb-1">🏁 Top 3 Finishers:</p>
-                                <ol class="text-sm list-decimal list-inside text-gray-800">
-                                    ${entry.featureResults.results.slice(0, 3).map(r => {
-                                        const driver = state.drivers.find(d => d.id === r.driverId);
-                                        return driver ? `<li>${driver.number} - ${driver.name}</li>` : '';
-                                    }).join('')}
-                                </ol>
-                            </div>
-                        ` : ''}
-                    </div>
-                `;
-            });
-            
-            container.innerHTML = html;
-        }
-
         function renderHistoryDates(classId) {
             const dateList = document.getElementById('historyDateList');
             const resultsContainer = document.getElementById('historyResultsContainer');
@@ -2601,34 +2454,19 @@
             }
             document.getElementById('printHistoryBtn').classList.remove('hidden');
 
-            // V4: Show weekend notes if they exist
-            if (eventData.weekendNotes && eventData.weekendNotes.trim().length > 0) {
-                const notesDiv = document.createElement('div');
-                notesDiv.className = 'mb-4 p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded';
-                notesDiv.innerHTML = `
-                    <h4 class="font-bold text-gray-900 mb-2">📝 Weekend Notes</h4>
-                    <p class="text-sm text-gray-800 whitespace-pre-wrap">${eventData.weekendNotes}</p>
-                `;
-                container.appendChild(notesDiv);
-            }
-
-            // Create a temporary div to render results into
-            const resultsDiv = document.createElement('div');
-            resultsDiv.id = 'tempRaceResultsContainer';
-            container.appendChild(resultsDiv);
-
-            // Temporarily swap the container ID so renderRaceResults works
-            const originalContainer = document.getElementById('raceResultsContainer');
-            const originalId = originalContainer.id;
-            originalContainer.id = 'raceResultsContainer_temp';
-            resultsDiv.id = 'raceResultsContainer';
+            // Temporarily replace the race results container with the history one for the generic render function
+            const originalResultsContainer = document.getElementById('raceResultsContainer');
+            document.body.appendChild(originalResultsContainer); // Move it out of the way
             
-            // Render the results
+            const tempContainer = document.createElement('div');
+            tempContainer.id = 'raceResultsContainer';
+            container.appendChild(tempContainer);
+
             renderRaceResults(classId, eventData);
             
-            // Restore original IDs
-            resultsDiv.id = 'tempRaceResultsContainer';
-            originalContainer.id = originalId;
+            // Restore
+            container.innerHTML = tempContainer.innerHTML;
+            document.body.removeChild(originalResultsContainer);
         }
 
         // Update Payout Structure Dropdown in Race Setup
@@ -2657,9 +2495,285 @@
             }
         }
 
+        // --- V5: ADVANCED DRIVER REPORTS ---
+        
+        function renderDriverReports(classId) {
+            const container = document.getElementById('reportsContainer');
+            const printBtn = document.getElementById('printReportsBtn');
+            
+            if (!classId) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-8">Select a class above to view detailed driver statistics and reports.</p>';
+                printBtn.classList.add('hidden');
+                return;
+            }
+            
+            const className = state.classes.find(c => c.id === classId)?.name || 'Unknown Class';
+            const classDrivers = state.drivers.filter(d => d.classId === classId);
+            
+            if (classDrivers.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-8">No drivers found for this class.</p>';
+                printBtn.classList.add('hidden');
+                return;
+            }
+            
+            // Calculate advanced statistics for each driver
+            const driverStats = classDrivers.map(driver => {
+                let heatStarts = [];
+                let heatFinishes = [];
+                let featureStarts = [];
+                let featureFinishes = [];
+                let totalHeatPasses = 0;
+                let totalFeaturePasses = 0;
+                
+                // Get all historical events for this class
+                const classHistory = state.seasonPoints[driver.id]?.history || [];
+                
+                classHistory.forEach(event => {
+                    // Process heat results
+                    if (event.heatResult && event.heatResult.startPosition && event.heatResult.position) {
+                        heatStarts.push(event.heatResult.startPosition);
+                        heatFinishes.push(event.heatResult.position);
+                        const passes = event.heatResult.startPosition - event.heatResult.position;
+                        totalHeatPasses += passes;
+                    }
+                    
+                    // Process feature results
+                    if (event.featureResult && event.featureResult.startPosition && event.featureResult.position) {
+                        featureStarts.push(event.featureResult.startPosition);
+                        featureFinishes.push(event.featureResult.position);
+                        const passes = event.featureResult.startPosition - event.featureResult.position;
+                        totalFeaturePasses += passes;
+                    }
+                });
+                
+                const avgHeatStart = heatStarts.length > 0 ? (heatStarts.reduce((a, b) => a + b, 0) / heatStarts.length).toFixed(2) : 'N/A';
+                const avgHeatFinish = heatFinishes.length > 0 ? (heatFinishes.reduce((a, b) => a + b, 0) / heatFinishes.length).toFixed(2) : 'N/A';
+                const avgFeatureStart = featureStarts.length > 0 ? (featureStarts.reduce((a, b) => a + b, 0) / featureStarts.length).toFixed(2) : 'N/A';
+                const avgFeatureFinish = featureFinishes.length > 0 ? (featureFinishes.reduce((a, b) => a + b, 0) / featureFinishes.length).toFixed(2) : 'N/A';
+                const totalPasses = totalHeatPasses + totalFeaturePasses;
+                
+                return {
+                    driver: driver,
+                    points: state.seasonPoints[driver.id]?.points || 0,
+                    wins: state.seasonPoints[driver.id]?.featureWins || 0,
+                    heatWins: state.seasonPoints[driver.id]?.heatWins || 0,
+                    avgHeatStart: avgHeatStart,
+                    avgHeatFinish: avgHeatFinish,
+                    avgFeatureStart: avgFeatureStart,
+                    avgFeatureFinish: avgFeatureFinish,
+                    totalHeatPasses: totalHeatPasses,
+                    totalFeaturePasses: totalFeaturePasses,
+                    totalPasses: totalPasses,
+                    events: classHistory.length
+                };
+            }).sort((a, b) => b.points - a.points);
+            
+            // Render table
+            let html = `
+                <table class="w-full">
+                    <thead class="bg-gray-800 text-white">
+                        <tr>
+                            <th class="p-3 text-left font-semibold">Pos</th>
+                            <th class="p-3 text-left font-semibold">Driver</th>
+                            <th class="p-3 text-center font-semibold">#</th>
+                            <th class="p-3 text-center font-semibold">Points</th>
+                            <th class="p-3 text-center font-semibold">Feature Wins</th>
+                            <th class="p-3 text-center font-semibold">Heat Wins</th>
+                            <th class="p-3 text-center font-semibold">Avg Heat Start</th>
+                            <th class="p-3 text-center font-semibold">Avg Heat Finish</th>
+                            <th class="p-3 text-center font-semibold">Avg Feature Start</th>
+                            <th class="p-3 text-center font-semibold">Avg Feature Finish</th>
+                            <th class="p-3 text-center font-semibold">Heat Passes</th>
+                            <th class="p-3 text-center font-semibold">Feature Passes</th>
+                            <th class="p-3 text-center font-semibold bg-orange-600">Total Passes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            driverStats.forEach((stat, index) => {
+                const rowClass = index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+                html += `
+                    <tr class="${rowClass} hover:bg-orange-50 transition">
+                        <td class="p-3 font-bold text-orange-600">${index + 1}</td>
+                        <td class="p-3 font-semibold">${stat.driver.name}</td>
+                        <td class="p-3 text-center">#${stat.driver.number}</td>
+                        <td class="p-3 text-center font-bold">${stat.points}</td>
+                        <td class="p-3 text-center">${stat.wins}</td>
+                        <td class="p-3 text-center">${stat.heatWins}</td>
+                        <td class="p-3 text-center ${stat.avgHeatStart !== 'N/A' ? 'text-blue-600' : ''}">${stat.avgHeatStart}</td>
+                        <td class="p-3 text-center ${stat.avgHeatFinish !== 'N/A' ? 'text-green-600' : ''}">${stat.avgHeatFinish}</td>
+                        <td class="p-3 text-center ${stat.avgFeatureStart !== 'N/A' ? 'text-blue-600' : ''}">${stat.avgFeatureStart}</td>
+                        <td class="p-3 text-center ${stat.avgFeatureFinish !== 'N/A' ? 'text-green-600' : ''}">${stat.avgFeatureFinish}</td>
+                        <td class="p-3 text-center ${stat.totalHeatPasses > 0 ? 'text-green-600 font-semibold' : stat.totalHeatPasses < 0 ? 'text-red-600 font-semibold' : ''}">${stat.totalHeatPasses > 0 ? '+' : ''}${stat.totalHeatPasses}</td>
+                        <td class="p-3 text-center ${stat.totalFeaturePasses > 0 ? 'text-green-600 font-semibold' : stat.totalFeaturePasses < 0 ? 'text-red-600 font-semibold' : ''}">${stat.totalFeaturePasses > 0 ? '+' : ''}${stat.totalFeaturePasses}</td>
+                        <td class="p-3 text-center bg-orange-100 ${stat.totalPasses > 0 ? 'text-green-700 font-bold' : stat.totalPasses < 0 ? 'text-red-700 font-bold' : 'font-bold'}">${stat.totalPasses > 0 ? '+' : ''}${stat.totalPasses}</td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                    </tbody>
+                </table>
+                <div class="mt-4 p-4 bg-gray-100 rounded-lg">
+                    <h4 class="font-semibold text-gray-800 mb-2">📖 How to Read This Report:</h4>
+                    <ul class="text-sm text-gray-600 space-y-1">
+                        <li><strong>Avg Start/Finish:</strong> Lower numbers are better (closer to front)</li>
+                        <li><strong>Passes:</strong> Positive numbers (green) mean the driver gained positions, negative numbers (red) mean they lost positions</li>
+                        <li><strong>Total Passes:</strong> Combined passes from all heats and features - shows overall racing performance</li>
+                    </ul>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+            printBtn.classList.remove('hidden');
+        }
+        
+        function printDriverReports() {
+            const classId = document.getElementById('reportsClassSelect').value;
+            if (!classId) {
+                showInfoModal('No Class Selected', 'Please select a class to print reports.');
+                return;
+            }
+            
+            const className = state.classes.find(c => c.id === classId)?.name || 'Unknown Class';
+            const classDrivers = state.drivers.filter(d => d.classId === classId);
+            
+            // Calculate stats (same as in renderDriverReports)
+            const driverStats = classDrivers.map(driver => {
+                let heatStarts = [], heatFinishes = [], featureStarts = [], featureFinishes = [];
+                let totalHeatPasses = 0, totalFeaturePasses = 0;
+                
+                const classHistory = state.seasonPoints[driver.id]?.history || [];
+                classHistory.forEach(event => {
+                    if (event.heatResult && event.heatResult.startPosition && event.heatResult.position) {
+                        heatStarts.push(event.heatResult.startPosition);
+                        heatFinishes.push(event.heatResult.position);
+                        totalHeatPasses += event.heatResult.startPosition - event.heatResult.position;
+                    }
+                    if (event.featureResult && event.featureResult.startPosition && event.featureResult.position) {
+                        featureStarts.push(event.featureResult.startPosition);
+                        featureFinishes.push(event.featureResult.position);
+                        totalFeaturePasses += event.featureResult.startPosition - event.featureResult.position;
+                    }
+                });
+                
+                return {
+                    driver: driver,
+                    points: state.seasonPoints[driver.id]?.points || 0,
+                    wins: state.seasonPoints[driver.id]?.featureWins || 0,
+                    heatWins: state.seasonPoints[driver.id]?.heatWins || 0,
+                    avgHeatStart: heatStarts.length > 0 ? (heatStarts.reduce((a, b) => a + b, 0) / heatStarts.length).toFixed(2) : 'N/A',
+                    avgHeatFinish: heatFinishes.length > 0 ? (heatFinishes.reduce((a, b) => a + b, 0) / heatFinishes.length).toFixed(2) : 'N/A',
+                    avgFeatureStart: featureStarts.length > 0 ? (featureStarts.reduce((a, b) => a + b, 0) / featureStarts.length).toFixed(2) : 'N/A',
+                    avgFeatureFinish: featureFinishes.length > 0 ? (featureFinishes.reduce((a, b) => a + b, 0) / featureFinishes.length).toFixed(2) : 'N/A',
+                    totalHeatPasses: totalHeatPasses,
+                    totalFeaturePasses: totalFeaturePasses,
+                    totalPasses: totalHeatPasses + totalFeaturePasses
+                };
+            }).sort((a, b) => b.points - a.points);
+            
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write('<html><head><title>Driver Statistics Report - ' + className + '</title>');
+            printWindow.document.write(`<style>
+                body { font-family: sans-serif; margin: 20px; }
+                .logo { width: 150px; margin-bottom: 20px; }
+                h1 { text-align: center; color: #1f2937; margin-bottom: 10px; }
+                h2 { text-align: center; color: #f97316; margin-bottom: 30px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 11px; }
+                th, td { border: 1px solid #333; padding: 8px 6px; text-align: center; }
+                th { background-color: #1f2937; color: white; font-weight: bold; }
+                .pos-col { font-weight: bold; color: #f97316; }
+                .positive { color: #16a34a; font-weight: bold; }
+                .negative { color: #dc2626; font-weight: bold; }
+                .total-col { background-color: #fff7ed; font-weight: bold; }
+                .footer { text-align: center; margin-top: 40px; color: #6b7280; font-size: 0.85em; }
+                .legend { margin-top: 20px; padding: 15px; background: #f3f4f6; border-radius: 8px; font-size: 0.9em; }
+            </style>`);
+            printWindow.document.write('</head><body>');
+            printWindow.document.write(`<img src="data:image/jpeg;base64,${LOGO_BASE64}" class="logo" alt="35 Raceway Park">`);
+            printWindow.document.write(`<h1>📊 DRIVER STATISTICS & PERFORMANCE REPORT 📊</h1>`);
+            printWindow.document.write(`<h2>${className} - ${new Date().getFullYear()} Season</h2>`);
+            
+            let tableHtml = `<table>
+                <thead>
+                    <tr>
+                        <th>Pos</th>
+                        <th>Driver</th>
+                        <th>#</th>
+                        <th>Points</th>
+                        <th>Feature<br>Wins</th>
+                        <th>Heat<br>Wins</th>
+                        <th>Avg Heat<br>Start</th>
+                        <th>Avg Heat<br>Finish</th>
+                        <th>Avg Feature<br>Start</th>
+                        <th>Avg Feature<br>Finish</th>
+                        <th>Heat<br>Passes</th>
+                        <th>Feature<br>Passes</th>
+                        <th class="total-col">Total<br>Passes</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+            
+            driverStats.forEach((stat, index) => {
+                const heatPassClass = stat.totalHeatPasses > 0 ? 'positive' : stat.totalHeatPasses < 0 ? 'negative' : '';
+                const featurePassClass = stat.totalFeaturePasses > 0 ? 'positive' : stat.totalFeaturePasses < 0 ? 'negative' : '';
+                const totalPassClass = stat.totalPasses > 0 ? 'positive' : stat.totalPasses < 0 ? 'negative' : '';
+                
+                tableHtml += `<tr>
+                    <td class="pos-col">${index + 1}</td>
+                    <td style="text-align: left;">${stat.driver.name}</td>
+                    <td>#${stat.driver.number}</td>
+                    <td><strong>${stat.points}</strong></td>
+                    <td>${stat.wins}</td>
+                    <td>${stat.heatWins}</td>
+                    <td>${stat.avgHeatStart}</td>
+                    <td>${stat.avgHeatFinish}</td>
+                    <td>${stat.avgFeatureStart}</td>
+                    <td>${stat.avgFeatureFinish}</td>
+                    <td class="${heatPassClass}">${stat.totalHeatPasses > 0 ? '+' : ''}${stat.totalHeatPasses}</td>
+                    <td class="${featurePassClass}">${stat.totalFeaturePasses > 0 ? '+' : ''}${stat.totalFeaturePasses}</td>
+                    <td class="total-col ${totalPassClass}">${stat.totalPasses > 0 ? '+' : ''}${stat.totalPasses}</td>
+                </tr>`;
+            });
+            
+            tableHtml += '</tbody></table>';
+            printWindow.document.write(tableHtml);
+            
+            printWindow.document.write(`
+                <div class="legend">
+                    <strong>How to Read This Report:</strong><br>
+                    • <strong>Avg Start/Finish:</strong> Lower numbers are better (closer to front of the field)<br>
+                    • <strong>Passes:</strong> <span class="positive">Positive (green)</span> means gained positions, <span class="negative">Negative (red)</span> means lost positions<br>
+                    • <strong>Total Passes:</strong> Combined passes from all heats and features - overall measure of racing performance
+                </div>
+            `);
+            
+            printWindow.document.write(`<p class="footer">Official Track Record - 35 Raceway Park<br>Printed: ${new Date().toLocaleDateString()}</p>`);
+            printWindow.document.write('</body></html>');
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
+        }
+
         // Render Payout Structures in Settings Tab
         function renderPayoutManagement() {
             renderDriverPayoutHistory();
+            
+            // V5: Populate class filter dropdown
+            const classFilter = document.getElementById('payoutClassFilter');
+            if (classFilter) {
+                classFilter.innerHTML = '<option value="">All Classes</option>';
+                state.classes.forEach(cls => {
+                    const option = document.createElement('option');
+                    option.value = cls.id;
+                    option.textContent = cls.name;
+                    classFilter.appendChild(option);
+                });
+                
+                // V5: Render the payouts list table
+                renderPayoutsList();
+            }
             
             const list = document.getElementById('payoutStructuresList');
             if (!list) return;
@@ -2853,6 +2967,258 @@
             `;
             
             showInfoModal(`Payout Details`, detailsHtml);
+        }
+
+        // --- V5: PAYOUT MANAGEMENT ENHANCEMENTS ---
+        
+        function renderPayoutsList() {
+            const tbody = document.getElementById('payoutsList');
+            if (!tbody) return;
+            
+            const classFilter = document.getElementById('payoutClassFilter').value;
+            const searchTerm = document.getElementById('payoutDriverSearch').value.toLowerCase();
+            
+            // Get all drivers with payouts
+            const driversWithPayouts = Object.keys(state.driverPayouts)
+                .map(driverId => {
+                    const driver = state.drivers.find(d => d.id === driverId);
+                    if (!driver) return null;
+                    
+                    // Apply class filter
+                    if (classFilter && driver.classId !== classFilter) return null;
+                    
+                    // Apply search filter
+                    if (searchTerm) {
+                        const nameMatch = driver.name.toLowerCase().includes(searchTerm);
+                        const numberMatch = driver.number.toString().includes(searchTerm);
+                        if (!nameMatch && !numberMatch) return null;
+                    }
+                    
+                    return {
+                        driver: driver,
+                        payoutData: state.driverPayouts[driverId]
+                    };
+                })
+                .filter(Boolean)
+                .sort((a, b) => b.payoutData.yearlyTotal - a.payoutData.yearlyTotal);
+            
+            // Update summary statistics
+            const totalPaid = driversWithPayouts.reduce((sum, item) => sum + item.payoutData.yearlyTotal, 0);
+            const eventsSet = new Set();
+            driversWithPayouts.forEach(item => {
+                item.payoutData.races.forEach(race => eventsSet.add(race.date));
+            });
+            const eventCount = eventsSet.size;
+            const avgPerEvent = eventCount > 0 ? totalPaid / eventCount : 0;
+            
+            document.getElementById('totalYearlyPayout').textContent = '$' + totalPaid.toLocaleString();
+            document.getElementById('totalEventsWithPayouts').textContent = eventCount;
+            document.getElementById('avgPayoutPerEvent').textContent = '$' + Math.round(avgPerEvent).toLocaleString();
+            
+            // Render table
+            if (driversWithPayouts.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center py-12 text-gray-500">
+                            No drivers match your filters. Try adjusting your search criteria.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = '';
+            driversWithPayouts.forEach(item => {
+                const className = state.classes.find(c => c.id === item.driver.classId)?.name || 'Unknown';
+                const row = document.createElement('tr');
+                row.className = 'border-b hover:bg-orange-50 transition';
+                row.innerHTML = `
+                    <td class="p-3">${item.driver.name}</td>
+                    <td class="p-3">#${item.driver.number}</td>
+                    <td class="p-3">${className}</td>
+                    <td class="p-3 text-right font-bold text-green-600">$${item.payoutData.yearlyTotal.toLocaleString()}</td>
+                    <td class="p-3 text-center">${item.payoutData.races.length}</td>
+                    <td class="p-3 text-center">
+                        <button class="text-orange-600 hover:text-orange-700 font-semibold text-sm" onclick="printSingleDriverPayout('${item.driver.id}')">
+                            🖨️ Print
+                        </button>
+                        <button class="text-blue-600 hover:text-blue-700 font-semibold text-sm ml-2" onclick="showPayoutDetails('${item.driver.id}')">
+                            👁️ View
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+        
+        function printPayoutReport() {
+            const classFilter = document.getElementById('payoutClassFilter').value;
+            const searchTerm = document.getElementById('payoutDriverSearch').value;
+            
+            // Get filtered drivers
+            const driversWithPayouts = Object.keys(state.driverPayouts)
+                .map(driverId => {
+                    const driver = state.drivers.find(d => d.id === driverId);
+                    if (!driver) return null;
+                    if (classFilter && driver.classId !== classFilter) return null;
+                    if (searchTerm) {
+                        const nameMatch = driver.name.toLowerCase().includes(searchTerm.toLowerCase());
+                        const numberMatch = driver.number.toString().includes(searchTerm);
+                        if (!nameMatch && !numberMatch) return null;
+                    }
+                    return {
+                        driver: driver,
+                        payoutData: state.driverPayouts[driverId]
+                    };
+                })
+                .filter(Boolean)
+                .sort((a, b) => b.payoutData.yearlyTotal - a.payoutData.yearlyTotal);
+            
+            if (driversWithPayouts.length === 0) {
+                showInfoModal('No Data', 'No payout data matches your current filters.');
+                return;
+            }
+            
+            // Create print window
+            const printWindow = window.open('', '_blank');
+            const className = classFilter ? state.classes.find(c => c.id === classFilter)?.name : 'All Classes';
+            const filterDesc = classFilter ? ` - ${className}` : '';
+            
+            printWindow.document.write('<html><head><title>Payout Report</title>');
+            printWindow.document.write(`<style>
+                body { font-family: sans-serif; margin: 20px; }
+                .logo { width: 150px; margin-bottom: 20px; }
+                h1 { text-align: center; color: #1f2937; margin-bottom: 10px; }
+                h2 { text-align: center; color: #f97316; margin-bottom: 30px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                th, td { border: 2px solid #333; padding: 12px 8px; text-align: left; }
+                th { background-color: #f97316; color: white; font-weight: bold; text-align: center; }
+                .num-col { width: 70px; text-align: center; }
+                .total-col { width: 120px; text-align: right; font-weight: bold; color: #16a34a; }
+                .events-col { width: 80px; text-align: center; }
+                .footer { text-align: center; margin-top: 40px; color: #6b7280; font-size: 0.85em; }
+            </style>`);
+            printWindow.document.write('</head><body>');
+            printWindow.document.write(`<img src="data:image/jpeg;base64,${LOGO_BASE64}" class="logo" alt="35 Raceway Park">`);
+            printWindow.document.write(`<h1>💰 SEASON PAYOUT REPORT 💰</h1>`);
+            printWindow.document.write(`<h2>${filterDesc} - ${new Date().getFullYear()}</h2>`);
+            
+            let tableHtml = `<table>
+                <thead>
+                    <tr>
+                        <th class="num-col">Car #</th>
+                        <th>Driver Name</th>
+                        <th>Class</th>
+                        <th class="total-col">Total Winnings</th>
+                        <th class="events-col">Events</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+            
+            driversWithPayouts.forEach(item => {
+                const driverClass = state.classes.find(c => c.id === item.driver.classId)?.name || 'Unknown';
+                tableHtml += `<tr>
+                    <td class="num-col">#${item.driver.number}</td>
+                    <td>${item.driver.name}</td>
+                    <td>${driverClass}</td>
+                    <td class="total-col">$${item.payoutData.yearlyTotal.toLocaleString()}</td>
+                    <td class="events-col">${item.payoutData.races.length}</td>
+                </tr>`;
+            });
+            
+            const grandTotal = driversWithPayouts.reduce((sum, item) => sum + item.payoutData.yearlyTotal, 0);
+            tableHtml += `<tr style="background-color: #f3f4f6;">
+                <td colspan="3" style="text-align: right; font-weight: bold;">GRAND TOTAL:</td>
+                <td class="total-col" style="font-size: 1.2em;">$${grandTotal.toLocaleString()}</td>
+                <td class="events-col"></td>
+            </tr>`;
+            
+            tableHtml += '</tbody></table>';
+            printWindow.document.write(tableHtml);
+            printWindow.document.write(`<p class="footer">Official Track Record - 35 Raceway Park<br>Printed: ${new Date().toLocaleDateString()}</p>`);
+            printWindow.document.write('</body></html>');
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
+        }
+        
+        function printSingleDriverPayout(driverId) {
+            const driver = state.drivers.find(d => d.id === driverId);
+            const payoutData = state.driverPayouts[driverId];
+            
+            if (!driver || !payoutData) {
+                showInfoModal('Error', 'Driver payout data not found.');
+                return;
+            }
+            
+            const className = state.classes.find(c => c.id === driver.classId)?.name || 'Unknown';
+            
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write('<html><head><title>Driver Payout Details</title>');
+            printWindow.document.write(`<style>
+                body { font-family: sans-serif; margin: 20px; }
+                .logo { width: 150px; margin-bottom: 20px; }
+                h1 { text-align: center; color: #1f2937; margin-bottom: 10px; }
+                h2 { text-align: center; color: #f97316; margin-bottom: 30px; }
+                .driver-info { background: #fff7ed; border: 2px solid #f97316; padding: 20px; margin: 20px 0; border-radius: 8px; }
+                .info-row { display: flex; justify-content: space-between; margin: 10px 0; }
+                .label { font-weight: bold; }
+                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                th, td { border: 2px solid #333; padding: 12px 8px; }
+                th { background-color: #f97316; color: white; font-weight: bold; text-align: center; }
+                .amount-col { width: 120px; text-align: right; font-weight: bold; color: #16a34a; }
+                .pos-col { width: 80px; text-align: center; }
+                .total-row { background-color: #f3f4f6; font-weight: bold; font-size: 1.1em; }
+                .footer { text-align: center; margin-top: 40px; color: #6b7280; font-size: 0.85em; }
+            </style>`);
+            printWindow.document.write('</head><body>');
+            printWindow.document.write(`<img src="data:image/jpeg;base64,${LOGO_BASE64}" class="logo" alt="35 Raceway Park">`);
+            printWindow.document.write(`<h1>💰 DRIVER PAYOUT DETAIL REPORT 💰</h1>`);
+            printWindow.document.write(`<h2>${driver.name} (#${driver.number}) - ${new Date().getFullYear()}</h2>`);
+            
+            printWindow.document.write(`<div class="driver-info">
+                <div class="info-row"><span class="label">Driver Name:</span><span>${driver.name}</span></div>
+                <div class="info-row"><span class="label">Car Number:</span><span>#${driver.number}</span></div>
+                <div class="info-row"><span class="label">Class:</span><span>${className}</span></div>
+                <div class="info-row"><span class="label">Total Events:</span><span>${payoutData.races.length}</span></div>
+                <div class="info-row"><span class="label">Total Winnings:</span><span style="color: #16a34a; font-size: 1.3em;">$${payoutData.yearlyTotal.toLocaleString()}</span></div>
+            </div>`);
+            
+            let tableHtml = `<table>
+                <thead>
+                    <tr>
+                        <th>Event Date</th>
+                        <th>Class</th>
+                        <th class="pos-col">Position</th>
+                        <th class="amount-col">Payout</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+            
+            // Sort races by date (most recent first)
+            const sortedRaces = [...payoutData.races].sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            sortedRaces.forEach(race => {
+                tableHtml += `<tr>
+                    <td>${race.date}</td>
+                    <td>${race.className}</td>
+                    <td class="pos-col">${race.position}</td>
+                    <td class="amount-col">$${race.amount.toLocaleString()}</td>
+                </tr>`;
+            });
+            
+            tableHtml += `<tr class="total-row">
+                <td colspan="3" style="text-align: right;">TOTAL:</td>
+                <td class="amount-col">$${payoutData.yearlyTotal.toLocaleString()}</td>
+            </tr>`;
+            
+            tableHtml += '</tbody></table>';
+            printWindow.document.write(tableHtml);
+            printWindow.document.write(`<p class="footer">Official Track Record - 35 Raceway Park<br>Driver Signature: ___________________________ Date: ___________<br>Printed: ${new Date().toLocaleDateString()}</p>`);
+            printWindow.document.write('</body></html>');
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
         }
 
         // --- LINEUP EDITOR FUNCTIONS ---
@@ -3428,8 +3794,14 @@
                 return;
             }
             
-            // V4: Wins are now ONLY counted during finalization, not when saving individual results
-            // This prevents double-counting
+            // V3: Track heat wins
+            const winner = resultData.results.find(r => r.position === 1);
+            if (winner) {
+                if (!state.seasonPoints[winner.driverId]) {
+                    state.seasonPoints[winner.driverId] = { points: 0, heatWins: 0, featureWins: 0 };
+                }
+                state.seasonPoints[winner.driverId].heatWins += 1;
+            }
             
             if (!state.heatResults[classId]) state.heatResults[classId] = {};
             state.heatResults[classId][`heat_${heatIndex}`] = resultData.results;
@@ -3571,8 +3943,14 @@
                 return;
             }
             
-            // V4: Wins are now ONLY counted during finalization, not when saving individual results
-            // This prevents double-counting
+            // V3: Track wins
+            const winner = resultData.results.find(r => r.position === 1);
+            if (winner) {
+                if (!state.seasonPoints[winner.driverId]) {
+                    state.seasonPoints[winner.driverId] = { points: 0, heatWins: 0, featureWins: 0 };
+                }
+                state.seasonPoints[winner.driverId].featureWins += 1;
+            }
             
             state.featureResults[classId] = { results: resultData.results };
             saveState();
@@ -3716,20 +4094,6 @@
             }
             const regIndex = state.completedRegistrations.findIndex(cr => cr.id === classId);
             if(regIndex > -1) state.completedRegistrations[regIndex].raceCompleted = true;
-            
-            // V4: Save this race to history with notes
-            if (!state.raceHistory) state.raceHistory = [];
-            state.raceHistory.push({
-                date: eventDate,
-                classId: classId,
-                className: className,
-                notes: state.weekendNotes || '',
-                heatResults: state.heatResults[classId] || {},
-                featureResults: state.featureResults[classId] || {},
-                payouts: payoutStructure ? (state.featureResults[classId]?.payouts || []) : null,
-                finalizedAt: new Date().toISOString()
-            });
-            
             saveState();
             renderAll();
             showInfoModal("Success!", `Race finalized! Points${payoutStructure ? ' and payouts' : ''} awarded!`);
@@ -4108,6 +4472,7 @@
             // V3: Enhanced print styles with larger fonts and city/state
             printWindow.document.write(`<style>
                 body{font-family:sans-serif; margin: 20px;} 
+                .logo{width:150px; margin-bottom:20px;}
                 h1,h2,h3{text-align:center;} 
                 .race-container{page-break-inside: avoid; border:1px solid #ccc; padding:10px; margin-bottom: 20px;} 
                 table{width:100%; border-collapse:collapse; margin-top: 10px;} 
@@ -4119,6 +4484,7 @@
                 .driver-location{font-size: 0.9em; color: #6b7280; display: block;}
             </style>`);
             printWindow.document.write('</head><body>');
+            printWindow.document.write(`<img src="data:image/jpeg;base64,${LOGO_BASE64}" class="logo" alt="35 Raceway Park">`);
             printWindow.document.write(`<h1>${title} - ${document.getElementById('eventDate').value}</h1>`);
             printWindow.document.write(`<h2>${className}</h2>`);
             
@@ -4203,6 +4569,7 @@
             printWindow.document.write('<html><head><title>Promoter Sheet - ' + title + '</title>');
             printWindow.document.write(`<style>
                 body{font-family:sans-serif; margin: 20px;} 
+                .logo{width:150px; margin-bottom:20px;}
                 h1,h2,h3{text-align:center; color: #1f2937;} 
                 h1{font-size: 2em; margin-bottom: 10px;}
                 h2{font-size: 1.5em; color: #f97316; margin-bottom: 20px;}
@@ -4219,6 +4586,7 @@
                 .header-note{text-align: center; color: #6b7280; font-size: 0.9em; margin-top: -10px; margin-bottom: 20px;}
             </style>`);
             printWindow.document.write('</head><body>');
+            printWindow.document.write(`<img src="data:image/jpeg;base64,${LOGO_BASE64}" class="logo" alt="35 Raceway Park">`);
             printWindow.document.write(`<h1>🎤 PROMOTER SHEET 🎤</h1>`);
             printWindow.document.write(`<h2>${title} - ${document.getElementById('eventDate').value}</h2>`);
             printWindow.document.write(`<p class="header-note">Enhanced lineup with driver stats for announcer reference</p>`);
@@ -4314,8 +4682,9 @@
             if (!container) return;
             const printWindow = window.open('', '_blank');
             printWindow.document.write('<html><head><title>' + title + '</title>');
-            printWindow.document.write('<style>body{font-family:sans-serif; margin: 20px;} h1,h2,h3,h4{ margin: 10px 0; } .race-container{page-break-inside: avoid; border:1px solid #ccc; padding:10px; margin-bottom: 20px;} ol{ padding-left: 20px; } .flex{display: flex; justify-content: space-between;}</style>');
+            printWindow.document.write('<style>body{font-family:sans-serif; margin: 20px;} .logo{width:150px; margin-bottom:20px;} h1,h2,h3,h4{ margin: 10px 0; } .race-container{page-break-inside: avoid; border:1px solid #ccc; padding:10px; margin-bottom: 20px;} ol{ padding-left: 20px; } .flex{display: flex; justify-content: space-between;}</style>');
             printWindow.document.write('</head><body>');
+            printWindow.document.write(`<img src="data:image/jpeg;base64,${LOGO_BASE64}" class="logo" alt="35 Raceway Park">`);
             printWindow.document.write(`<h1>${title} - ${document.getElementById('eventDate').value}</h1>`);
             printWindow.document.write(`<h2>${className}</h2>`);
             const contentToPrint = container.cloneNode(true);
@@ -4353,6 +4722,7 @@
             printWindow.document.write('<html><head><title>Payout Sheet - ' + className + '</title>');
             printWindow.document.write(`<style>
                 body { font-family: sans-serif; margin: 20px; }
+                .logo { width: 150px; margin-bottom: 20px; }
                 h1, h2 { text-align: center; color: #1f2937; }
                 h1 { font-size: 2em; margin-bottom: 10px; }
                 h2 { font-size: 1.3em; color: #f97316; margin-bottom: 30px; }
@@ -4370,6 +4740,7 @@
                 .footer { text-align: center; margin-top: 40px; color: #6b7280; font-size: 0.85em; }
             </style>`);
             printWindow.document.write('</head><body>');
+            printWindow.document.write(`<img src="data:image/jpeg;base64,${LOGO_BASE64}" class="logo" alt="35 Raceway Park">`);
             printWindow.document.write(`<h1>💰 DRIVER PAYOUT SHEET 💰</h1>`);
             printWindow.document.write(`<h2>${className} - ${eventDate}</h2>`);
             printWindow.document.write(`<p class="instructions"><strong>DRIVER SIGNATURE REQUIRED:</strong> All drivers must sign below to acknowledge receipt of payout. This document is for official track records.</p>`);
@@ -4451,8 +4822,9 @@
             
             const printWindow = window.open('', '_blank');
             printWindow.document.write('<html><head><title>Championship Points</title>');
-            printWindow.document.write('<style>body{font-family:sans-serif; margin: 20px;} h1,h2{text-align:center;} table{width:100%; border-collapse:collapse; margin-top: 20px;} td,th{border:1px solid #ddd; padding:8px; text-align:left;} th{background-color:#f2f2f2;}</style>');
+            printWindow.document.write('<style>body{font-family:sans-serif; margin: 20px;} .logo{width:150px; margin-bottom:20px;} h1,h2{text-align:center;} table{width:100%; border-collapse:collapse; margin-top: 20px;} td,th{border:1px solid #ddd; padding:8px; text-align:left;} th{background-color:#f2f2f2;}</style>');
             printWindow.document.write('</head><body>');
+            printWindow.document.write(`<img src="data:image/jpeg;base64,${LOGO_BASE64}" class="logo" alt="35 Raceway Park">`);
             printWindow.document.write(`<h1>Championship Points</h1><h2>${className} - As of ${new Date().toLocaleDateString()}</h2>`);
             
             const tableClone = pointsTable.cloneNode(true);
@@ -4746,26 +5118,11 @@
                 }
             });
             
-            // V4: Tech Inspection checkbox handler - enable inputs directly (don't re-render)
+            // V4: Tech Inspection checkbox handler - re-render to enable inputs
             document.getElementById('featureContainer').addEventListener('change', (e) => {
                 if (e.target.id && e.target.id.startsWith('techInspection-')) {
                     const classId = e.target.id.replace('techInspection-', '');
-                    const isChecked = e.target.checked;
-                    
-                    // Find all position inputs for this feature and enable/disable them
-                    const inputs = document.querySelectorAll(`input.v3-position-input[data-race-id="feature-${classId}"]`);
-                    inputs.forEach(input => {
-                        input.disabled = !isChecked;
-                    });
-                    
-                    // Find and toggle the warning message if it exists
-                    const positionsContainer = document.querySelector(`#v3-positions-feature-${classId}`);
-                    if (positionsContainer && positionsContainer.parentElement) {
-                        const warning = positionsContainer.parentElement.querySelector('p.text-red-600');
-                        if (warning) {
-                            warning.style.display = isChecked ? 'none' : 'block';
-                        }
-                    }
+                    renderFeature(classId);
                 }
             });
 
@@ -4828,6 +5185,7 @@
                         }, 250);
                     }
                 );
+            });
             });
             
             ['enableBMain', 'featureStartCount', 'heatTransferCount'].forEach(id => {
@@ -4959,6 +5317,11 @@
             document.getElementById('exportFeatureResultsBtn').addEventListener('click', exportFeatureResults);
             document.getElementById('exportPointsBtn').addEventListener('click', exportPointsStandings);
             document.getElementById('exportPayoutsBtn').addEventListener('click', exportPayoutSummary);
+            document.getElementById('printPayoutsBtn').addEventListener('click', printPayoutReport);
+            
+            // V5: Payout filtering for payouts page
+            document.getElementById('payoutClassFilter').addEventListener('change', renderPayoutsList);
+            document.getElementById('payoutDriverSearch').addEventListener('input', renderPayoutsList);
             
             document.getElementById('printHistoryBtn').addEventListener('click', () => {
                 const className = getClassNameFromSelect('historyClassSelect');
@@ -4972,8 +5335,9 @@
                 const container = document.getElementById('historyResultsContainer');
                 const printWindow = window.open('', '_blank');
                 printWindow.document.write('<html><head><title>Historical Race Results</title>');
-                printWindow.document.write('<style>body{font-family:sans-serif; margin: 20px;} h1,h2,h3,h4{ margin: 10px 0; } .flex{display: flex; justify-content: space-between;} .race-container{page-break-inside: avoid; border:1px solid #ccc; padding:10px; margin-bottom: 20px;} .space-y-1 > *+*{margin-top: 0.25rem;}</style>');
+                printWindow.document.write('<style>body{font-family:sans-serif; margin: 20px;} .logo{width:150px; margin-bottom:20px;} h1,h2,h3,h4{ margin: 10px 0; } .flex{display: flex; justify-content: space-between;} .race-container{page-break-inside: avoid; border:1px solid #ccc; padding:10px; margin-bottom: 20px;} .space-y-1 > *+*{margin-top: 0.25rem;}</style>');
                 printWindow.document.write('</head><body>');
+                printWindow.document.write(`<img src="data:image/jpeg;base64,${LOGO_BASE64}" class="logo" alt="35 Raceway Park">`);
                 printWindow.document.write(`<h1>Historical Race Results - ${dateStr}</h1>`);
                 printWindow.document.write(`<h2>${className}</h2>`);
                 const contentToPrint = container.cloneNode(true);
@@ -4990,9 +5354,9 @@
             document.getElementById('raceResultsClassSelect').addEventListener('change', e => renderRaceResults(e.target.value));
             document.getElementById('historyClassSelect').addEventListener('change', e => renderHistoryDates(e.target.value));
             
-            // V4: Payout Management functionality
-            document.getElementById('payoutClassFilter').addEventListener('change', renderPayouts);
-            document.getElementById('payoutDriverSearch').addEventListener('input', renderPayouts);
+            // V5: Driver Reports functionality
+            document.getElementById('reportsClassSelect').addEventListener('change', e => renderDriverReports(e.target.value));
+            document.getElementById('printReportsBtn').addEventListener('click', printDriverReports);
             
             // V4: Weekend Notes functionality
             document.getElementById('weekendNotesBtn').addEventListener('click', () => {
@@ -5015,14 +5379,6 @@
                 hideModal('weekendNotesModal');
                 showInfoModal('Notes Saved', 'Your weekend notes have been saved with this event\'s history.');
             });
-            
-            // V4: Race History button and modal
-            document.getElementById('viewHistoryBtn').addEventListener('click', () => {
-                renderRaceHistory();
-                showModal('raceHistoryModal');
-            });
-            
-            document.getElementById('raceHistoryModalCloseBtn').addEventListener('click', () => hideModal('raceHistoryModal'));
             
             document.getElementById('finalizeWeekendBtn').addEventListener('click', finalizeRaceWeekend);
             document.getElementById('finalizeSeasonBtn').addEventListener('click', finalizeSeason);
